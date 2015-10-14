@@ -45,5 +45,5 @@ setup(
     keywords='flatfox api',
     packages=find_packages(),
     provides=['flatfox_api'],
-    install_requires=['requests'],
+    install_requires=['requests', 'six'],
 )

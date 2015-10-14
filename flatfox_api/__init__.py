@@ -1,6 +1,6 @@
 import sys
 import json
-import urllib
+import six.moves.urllib as urllib
 import requests
 import datetime
 
@@ -36,9 +36,9 @@ class PermissionError(ApiError):
 
 
 class ApiRequestor(object):
-    def __init__(self, access_token):
+    def __init__(self, access_token=None):
         self._token = access_token
-        self._api_base = flatfox_server + '/api/'
+        self._api_base = flatfox_server + '/api/v1/'
 
     def request(self, method, url, data=None):
 
@@ -77,7 +77,8 @@ class ApiRequestor(object):
     def _raw_json_request(self, method, full_url, auth, data):
         request_func = getattr(requests, method.lower())
         return request_func(url=full_url, auth=auth, data=json.dumps(data),
-                            headers={'Content-Type': 'application/json'})
+                            headers={'Content-Type': 'application/json',
+                                     'Accept': 'application/json'})
 
     def _raw_multipart_request(self, method, full_url, auth, data, files):
         request_func = getattr(requests, method.lower())
@@ -117,7 +118,7 @@ class FlatfoxObject(dict):
     def __init__(self, id=None, key=None, **kwargs):
         super(FlatfoxObject, self).__init__(**kwargs)
 
-        object.__setattr__(self, 'token', key if key else token)
+        object.__setattr__(self, 'access_token', key if key else access_token)
 
         if id:
             self['id'] = id
@@ -141,22 +142,22 @@ class FlatfoxObject(dict):
         except KeyError as err:
             raise AttributeError(*err.args)
 
-    def refresh_from_data(self, values, token=None):
-        self.token = token or getattr(values, 'token', None)
+    def refresh_from_data(self, values, access_token=None):
+        self.access_token = access_token or getattr(values, 'access_token', None)
 
         self.clear()
         for key, value in values.items():
             super(FlatfoxObject, self).__setitem__(key, value)
 
     def request(self, method, url, data=None):
-        requestor = ApiRequestor(token=self.token)
+        requestor = ApiRequestor(access_token=self.access_token)
         response = requestor.request(method=method, url=url, data=data)
         return response
 
     @classmethod
     def init_from_response(cls, values, key):
         instance = cls(id=values.get('id'), key=key)
-        instance.refresh_from_data(values, token=key)
+        instance.refresh_from_data(values, access_token=key)
         return instance
 
     @property
@@ -183,14 +184,14 @@ def serialize_object(obj):
     return params, files
 
 
-def deserialize_object(klass, response, token):
+def deserialize_object(klass, response, access_token):
     if isinstance(response, list):
         return [
-            deserialize_object(klass, item, token)
+            deserialize_object(klass, item, access_token)
             for item in response]
 
     elif isinstance(response, dict) and not isinstance(response, FlatfoxObject):
-        return klass.init_from_response(response, key=token)
+        return klass.init_from_response(response, key=access_token)
     else:
         return response
 
@@ -198,8 +199,8 @@ def deserialize_object(klass, response, token):
 class ApiResource(FlatfoxObject):
 
     @classmethod
-    def retrieve(cls, token=None, **params):
-        instance = cls(token=token, **params)
+    def retrieve(cls, access_token=None, **params):
+        instance = cls(access_token=access_token, **params)
         instance.refresh()
         return instance
 
@@ -249,23 +250,23 @@ class ApiResource(FlatfoxObject):
 
 class ListableApiResource(ApiResource):
     @classmethod
-    def list(cls, token=None, **params):
-        requestor = ApiRequestor(token=token)
+    def list(cls, access_token=None, **params):
+        requestor = ApiRequestor(access_token=access_token)
         url = cls.class_url()
         response = requestor.request('get', url, params)
         return deserialize_object(
             klass=cls,
             response=response,
-            token=token)
+            access_token=access_token)
 
 
 class CreateableApiResource(ApiResource):
     @classmethod
-    def create(cls, token=None, **params):
-        requestor = ApiRequestor(token=token)
+    def create(cls, access_token=None, **params):
+        requestor = ApiRequestor(access_token=access_token)
         url = cls.class_url()
         response = requestor.request(method='post', url=url, data=params)
-        return cls(token=token, **response)
+        return cls(access_token=access_token, **response)
 
 
 class UpdateableApiResource(ApiResource):
@@ -278,6 +279,10 @@ class UpdateableApiResource(ApiResource):
 
 
 class Flat(ListableApiResource, UpdateableApiResource, CreateableApiResource):
+
+    @classmethod
+    def class_url(cls):
+        return "my-flat"
 
     @classmethod
     def init_from_response(cls, values, key):
