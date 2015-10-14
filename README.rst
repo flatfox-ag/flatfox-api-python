@@ -1,4 +1,5 @@
-# flatfox-api
+flatfox-api
+===========
 
 Flatfox api helper library
 
