@@ -60,8 +60,8 @@ class ApiRequestor(object):
         else:
             serialized_data, files = None, None
 
-        sys.stdout.write("Flatfox Api: {0} {1}\n".format(
-            method.upper(), full_url))
+        # sys.stdout.write("Flatfox Api: {0} {1}\n".format(
+        #     method.upper(), full_url))
 
         if not files:
             res = self._raw_json_request(method=method, full_url=full_url,
@@ -210,7 +210,7 @@ class ApiResource(FlatfoxObject):
             instance = cls(**params)
             instance.refresh()
             return True
-        except:
+        except InvalidRequestError:
             return False
 
     def refresh(self):
@@ -244,7 +244,7 @@ class ApiResource(FlatfoxObject):
         if id:
             res = str(id)
         else:
-            res = 'ext-{0}'.format(external_id)
+            res = u'ext-{0}'.format(external_id)
         return urllib.parse.quote_plus(res)
 
 
