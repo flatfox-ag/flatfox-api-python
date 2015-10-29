@@ -296,4 +296,4 @@ class FlatImage(CreateableApiResource):
 
     @classmethod
     def class_url(cls):
-        return "flat-image"
+        return "upload/flat_image"
